@@ -2,8 +2,6 @@
 
 # set elasticsearch mappings
 mapping.sh
-# create metar dir
-mkdir /metar
 # go to the metar dir
 cd /metar
 # get the first set
@@ -11,7 +9,7 @@ lftp -c mirror http://tgftp.nws.noaa.gov/data/observations/metar/cycles
 # add station information
 wget http://tgftp.nws.noaa.gov/data/nsd_cccc.txt
 # do all the data
-for x  in `ls *.TXT`; do echo $x ; cat $x | grep -E "^[A-Z]{4} " | sort -u | metar2elastic.py ; done
+for x  in `ls cycles/*.TXT`; do echo $x ; cat $x | grep -E "^[A-Z]{4} " | sort -u | metar2elastic.py ; done
 # set old_cycle
 cp -r cycles old_cycles
 #keep looping for ever

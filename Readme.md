@@ -37,6 +37,6 @@ Credentials
 user: elastic
 pass: changeme
 
-Kibana config (index creation)
-index: weather-*
-date: time
+Kibana config (add index paterns)
+Index name or pattern: weather-*
+Time-field name: time
