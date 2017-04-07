@@ -59,6 +59,10 @@ for line in fh:
   stations[f[0]] = station(f[0],f[3],f[4],f[5],f[7],f[8])
 fh.close()
 
+#set counters
+counter=0
+missed=0
+skipped=0
 # read data from stdin
 for line in sys.stdin:
     # remove enters
@@ -167,10 +171,15 @@ for line in sys.stdin:
             if res['hits']['total'] == 0:
               # post the data to es
               res = es.index(index=myindex, doc_type='metar', body=record)
+              counter += 1
+            else:
+              skipped += 1
           except:
             print ("posting, first")
             res = es.index(index=myindex, doc_type='metar', body=record)
+            counter += 1
       except Metar.ParserError as exc:
         # store execptions for further investigation
         if exc:
-          missed=''
+          missed += 1
+print ("%s records added, %s records where duplicates, %s records had errors") % (counter,skipped,missed)

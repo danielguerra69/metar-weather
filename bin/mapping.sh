@@ -21,3 +21,5 @@ curl -XPUT elastic:changeme@elasticsearch:9200/_template/fixpos_weather -d '{
       }
     }
   }'
+
+echo ""

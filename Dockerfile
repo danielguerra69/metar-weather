@@ -9,4 +9,4 @@ RUN pip install jsonpickle
 RUN rm -rf /root/.cache
 COPY bin /bin
 VOLUME /metar
-CMD ["docker-cmd.sh"]
+CMD ["/bin/docker-cmd.sh"]
