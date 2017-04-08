@@ -175,7 +175,7 @@ for line in sys.stdin:
             else:
               skipped += 1
           except:
-            print ("posting, first")
+            # posting, first record in index
             res = es.index(index=myindex, doc_type='metar', body=record)
             counter += 1
       except Metar.ParserError as exc:
