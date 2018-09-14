@@ -2,11 +2,16 @@
 import sys
 import jsonpickle
 import re
+import os
 from metar import Metar
-from datetime import datetime
 from elasticsearch import Elasticsearch
 
-es = Elasticsearch(["http://elastic:changeme@elasticsearch"], maxsize=5)
+if os.environ['ES_URL']:
+    esurl="http://" + os.environ['ES_URL']
+else:
+    esurl="http://elastic:changeme@elasticsearch"
+
+es = Elasticsearch([esurl], maxsize=5)
 
 class MetarObj(object):
 
@@ -73,7 +78,7 @@ for line in sys.stdin:
     if len(line) and line[0] == line[0].upper():
       try:
         # decode the line
-      	obs = Metar.Metar(line)
+        obs = Metar.Metar(line)
         # Fill the metar object the individual data
         # The 'station_id' attribute is a string.
         if obs.station_id:
@@ -157,8 +162,10 @@ for line in sys.stdin:
         if obs._remarks:
           metar.remarks = obs.remarks("")
 
+
         # set metar record
-        record = jsonpickle.encode(metar)
+        record = jsonpickle.encode(metar,unpicklable=False)
+
         if obs.time:
           #timed index name
           myindex = "weather-" + obs.time.strftime("%Y%m%d%H")
