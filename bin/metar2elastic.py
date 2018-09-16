@@ -1,22 +1,23 @@
 #!/usr/bin/python
 import sys
 import jsonpickle
-import re
 import os
+import re
 from metar import Metar
 from elasticsearch import Elasticsearch
 
+# connect to es
 if os.environ['ES_URL']:
     esurl="http://" + os.environ['ES_URL']
 else:
-    esurl="http://elastic:changeme@elasticsearch"
+    esurl="http://elasticsearch:9200"
 
 es = Elasticsearch([esurl], maxsize=5)
 
 class MetarObj(object):
 
-    def __init__(self):
-        self.child = None
+  def __init__(self):
+    self.station_id = None
 
 class position(object):
   """A class representing a location on the earth's surface."""
@@ -29,45 +30,95 @@ class position(object):
     return self.string()
 
 class station:
-  """An object representing a weather station."""
 
-  def __init__( self, id, city=None, state=None, country=None, latitude=None, longitude=None):
+  """An object representing a weather station.
+!   CD = 2 letter state (province) abbreviation
+!   STATION = 16 character station long name
+!   ICAO = 4-character international id
+!   IATA = 3-character (FAA) id
+!   SYNOP = 5-digit international synoptic number
+!   LAT = Latitude (degrees minutes)
+!   LON = Longitude (degree minutes)
+!   ELEV = Station elevation (meters)
+!   M = METAR reporting station.   Also Z=obsolete? site
+!   N = NEXRAD (WSR-88D) Radar site
+!   V = Aviation-specific flag (V=AIRMET/SIGMET end point, A=ARTCC T=TAF U=T+V)
+!   U = Upper air (rawinsonde=X) or Wind Profiler (W) site
+!   A = Auto (A=ASOS, W=AWOS, M=Meso, H=Human, G=Augmented) (H/G not yet impl.)
+!   C = Office type F=WFO/R=RFC/C=NCEP Center
+!   Digit that follows is a priority for plotting (0=highest)
+!   Country code (2-char) is last column
+"""
+
+
+
+  def __init__( self, id, state=None, station=None, iata=None, synop=None, lat=None, lon=None, elev=None, m=None, n=None, v=None, u=None, a=None, c=None, prio=None, country=None):
+
     self.id = id
-    self.city = city
     self.state = state
+    self.station = station
+    self.iata = iata
+    self.synop = synop
+    self.lat = self.parse_dms(lat)
+    self.lon = self.parse_dms(lon)
+    self.elev = elev
+    if m != "":
+      self.m = m
+    if n != "":
+      self.n = n
+    if v != "":
+      self.v = v
+    if u != "":
+      self.u = u
+    if a != "":
+      self.a = a
+    if c != "":
+      self.c = c
+    self.prio = prio
     self.country = country
-    self.position = position(latitude,longitude)
-    if self.state:
-      self.name = "%s, %s" % (self.city, self.state)
-    else:
-      self.name = self.city
 
-def dms2dd(degrees, minutes, direction):
-    dd = float(degrees) + float(minutes)/60
+
+  def dms2dd(self, degrees, minutes, direction):
+    dd = float(degrees) + float(minutes) / 60
     if direction == 'S' or direction == 'W':
         dd *= -1
     return dd
 
-def parse_dms(value):
-    parts = re.split('(\d+|[A-Z])',value)
-    value = dms2dd(parts[1], parts[3], parts[5])
-    return (value)
+
+  def parse_dms(self, value):
+    parts = re.split('(\d+|[A-Z])', value)
+    value = self.dms2dd(parts[1], parts[3], parts[5])
+    return value
 
 #intialize station information
-station_file_name = "/metar/nsd_cccc.txt"
+station_file_name = "/metar/stations.txt"
 
 stations = {}
 
 fh = open(station_file_name,'r')
+
+"""
+ALASKA             19-SEP-14
+CD  STATION         ICAO  IATA  SYNOP   LAT     LONG   ELEV   M  N  V  U  A  C
+AK ADAK NAS         PADK  ADK   70454  51 53N  176 39W    4   X     T          7 US
+
+"""
+missed=0
 for line in fh:
-  f = line.strip().split(";")
-  stations[f[0]] = station(f[0],f[3],f[4],f[5],f[7],f[8])
+  line.strip()
+  try:
+    stations[line[20:24]] = station(line[20:24], line[0:2],line[3:19],line[26:29],line[32:37],line[39:45],line[47:54],line[56:59],line[62].strip(),line[65].strip(),line[68].strip(),line[71].strip(),line[74].strip(),line[77].strip(),line[79].strip(),line[81:83])
+  except:
+    missed += 1
+
 fh.close()
+
 
 #set counters
 counter=0
 missed=0
 skipped=0
+noinfo=0
 # read data from stdin
 for line in sys.stdin:
     # remove enters
@@ -79,20 +130,39 @@ for line in sys.stdin:
       try:
         # decode the line
         obs = Metar.Metar(line)
+
         # Fill the metar object the individual data
         # The 'station_id' attribute is a string.
         if obs.station_id:
           metar.station_id=obs.station_id
-          # set extra information about the station
-          try:
+
+        try:
             if stations[obs.station_id]:
-              metar.position = str(parse_dms(stations[obs.station_id].position.latitude)) + "," + str(parse_dms(stations[obs.station_id].position.longitude))
-              metar.country= stations[obs.station_id].country
-              metar.city= stations[obs.station_id].city
-          except:
-              metar.country='unknown'
+                try:
+                  metar.location = str(stations[obs.station_id].lat) + "," + str(stations[obs.station_id].lon)
+                except:
+                    noinfo += 1
+                try:
+                  metar.country = stations[obs.station_id].country
+                except:
+                    noinfo += 1
+                try:
+                  metar.station = stations[obs.station_id].station
+                except:
+                    noinfo += 1
+                try:
+                  metar.elev = int(stations[obs.station_id].elev)
+                except:
+                    noinfo += 1
+                try:
+                  metar.prio = int(stations[obs.station_id].prio)
+                except:
+                    noinfo += 1
+        except:
+          noinfo += 1
+
         # the report type
-        if obs.type:
+        if obs.report_type and obs.report_type() != "":
           metar.report_type=obs.report_type()
 
         # The 'time' attribute is a datetime object
@@ -101,19 +171,25 @@ for line in sys.stdin:
 
         # The 'temp' and 'dewpt' attributes are temperature objects
         if obs.temp:
-          metar.temp = obs.temp.value("C")
+          # temerature sanity check
+          if obs.temp.value("C") > -70 and obs.temp.value("C") < 70:
+            metar.temp = obs.temp.value("C")
 
         if obs.dewpt:
-          metar.dewpt = obs.dewpt.value("C")
+          # dewpoint sanity check
+          if obs.dewpt.value("C") > 0 and obs.dewpt.value("C") < 40:
+            metar.dewpt = obs.dewpt.value("C")
 
         # The wind() method returns a string describing wind observations
         # which may include speed, direction, variability and gusts.
         if obs.wind_dir:
+          if obs.wind_dir.value() >= 0 and obs.wind_dir.value() < 360:
              metar.wind_dir = obs.wind_dir.value()
 
         if obs.wind_speed:
-          metar.wind_speed = obs.wind_speed.value("KMH")
-          metar.wind = obs.wind("KMH")
+          if obs.wind_speed.value("KMH") >= 0 and obs.wind_speed.value("KMH") < 410:
+            metar.wind_speed = obs.wind_speed.value("KMH")
+            metar.wind = obs.wind("KMH")
 
         # The peak_wind() method returns a string describing the peak wind
         # speed and direction.
@@ -125,33 +201,34 @@ for line in sys.stdin:
           metar.wind_speed_peak  = obs.peak_wind("KMH")
 
         # The visibility() method summarizes the visibility observation.
-        if obs.vis:
+        if obs.vis and obs.vis.value("m") != "":
           metar.visibility = obs.vis.value("m")
 
         # The runway_visual_range() method summarizes the runway visibility
         # observations.
-        if obs.runway:
+        if obs.runway and obs.runway_visual_range("m") != "":
           metar.runway_visual_range = obs.runway_visual_range("m")
 
         # The 'press' attribute is a pressure object.
         if obs.press:
-          metar.pressure = obs.press.value("hPa")
+          if obs.press.value("hPa") > 860 and obs.press.value("hPa") < 1090:
+            metar.pressure = obs.press.value("hPa")
 
         # The 'precip_1hr' attribute is a precipitation object.
-        if obs.precip_1hr:
+        if obs.precip_1hr and obs.precip_1hr.value != 0:
           metar.precipitation = obs.precip_1hr.value("")
 
         # The present_weather() method summarizes the weather description (rain, etc.)
         try:
-          weather = obs.present_weather()
-          metar.weather=weather
+          if obs.present_weather() and obs.present_weather() != "":
+            metar.weather=obs.present_weather()
         except:
           noweather=''
 
         # The sky_conditions() method summarizes the cloud-cover observations.
         try:
-          sky = obs.sky_conditions()
-          metar.sky=sky
+          if obs.sky_conditions() and obs.sky_conditions() != "":
+            metar.sky=obs.sky_conditions()
         except:
           nosky=''
 
@@ -168,7 +245,7 @@ for line in sys.stdin:
 
         if obs.time:
           #timed index name
-          myindex = "weather-" + obs.time.strftime("%Y%m%d%H")
+          myindex = "metar-" + obs.time.strftime("%Y%m%d%H")
 
           # build a search query to check if its there
           query = '{"query": { "bool": { "must": [{ "match": { "station_id": "' + metar.station_id + '"}},{ "match": { "time": "' + metar.time + '" }}]}}}'
@@ -189,4 +266,4 @@ for line in sys.stdin:
         # store execptions for further investigation
         if exc:
           missed += 1
-print ("%s records added, %s records where duplicates, %s records had errors") % (counter,skipped,missed)
+print ("%s records added, %s records where duplicates, %s records had errors, %s missed info moments") % (counter,skipped,missed,noinfo)
