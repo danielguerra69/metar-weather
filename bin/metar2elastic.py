@@ -91,7 +91,7 @@ class station:
     return value
 
 #intialize station information
-station_file_name = "/metar/stations.txt"
+station_file_name = "/stations.txt"
 
 stations = {}
 
