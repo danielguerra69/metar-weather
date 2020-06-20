@@ -42,12 +42,12 @@ docker-compose logs -f
 #### Manual docker method
 First start elasticsearch
 ```bash
-docker run --name es -d docker.elastic.co/elasticsearch/elasticsearch:6.4.0
+docker run --name es -d docker.elastic.co/elasticsearch/elasticsearch:7.8.0
 ```
 
 Second start kibana
 ```bash
-docker run -p 5601:5601 --link es:elasticsearch --name kb -d docker.elastic.co/kibana/kibana:6.4.0
+docker run -p 5601:5601 --link es:elasticsearch --name kb -d docker.elastic.co/kibana/kibana:7.8.0
 ```
 
 Third start metar weather
