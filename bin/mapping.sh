@@ -12,14 +12,9 @@ until curl -XGET $ES_URL -H 'Content-Type: application/json'; do
 done
 
 >&2 echo "$(date) Elasticsearch is up - executing command"
-curl -XPUT $ES_URL/_template/metar_mapping -H 'Content-Type: application/json' -d '{
-  "template": "metar-*",
-    "index": {
-      "number_of_shards": 3,
-      "number_of_replicas": 1
-    },
+curl -XPUT $ES_URL/_template/metar-mapping-template -H 'Content-Type: application/json' -d '{
+    "index_patterns": ["metar"],
     "mappings" : {
-      "metar" : {
         "properties" : {
           "country" : {
             "type" : "text",
@@ -149,7 +144,6 @@ curl -XPUT $ES_URL/_template/metar_mapping -H 'Content-Type: application/json' -
           }
         }
       }
-    }
   }'
 echo " "
 echo "$(date) Mapping finished"

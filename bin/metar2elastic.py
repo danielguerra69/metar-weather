@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import sys
 import jsonpickle
 import os
@@ -13,6 +13,8 @@ else:
     esurl="http://elasticsearch:9200"
 
 es = Elasticsearch([esurl], maxsize=5)
+
+myindex = "metar"
 
 class MetarObj(object):
 
@@ -244,26 +246,25 @@ for line in sys.stdin:
         record = jsonpickle.encode(metar,unpicklable=False)
 
         if obs.time:
-          #timed index name
-          myindex = "metar-" + obs.time.strftime("%Y%m%d%H")
-
           # build a search query to check if its there
-          query = '{"query": { "bool": { "must": [{ "match": { "station_id": "' + metar.station_id + '"}},{ "match": { "time": "' + metar.time + '" }}]}}}'
+          query = '{"query": {"bool": {"minimum_should_match": 4,"should": [{ "match": { "station_id.keyword": "' + metar.station_id + '"}},{ "match_phrase": { "time": "' + metar.time + '" }}]}}}'
           # check if the data is allready there
+          #print (query)
           try:
-            res = es.search(index=myindex, doc_type='metar', body=query)
-            if res['hits']['total'] == 0:
+            res = es.search(index=myindex, body=query)
+            #print (res['hits']['total']['value'])
+            if res['hits']['total']['value'] == 0:
               # post the data to es
-              res = es.index(index=myindex, doc_type='metar', body=record)
+              res = es.index(index=myindex, body=record)
               counter += 1
             else:
               skipped += 1
           except:
             # posting, first record in index
-            res = es.index(index=myindex, doc_type='metar', body=record)
+            res = es.index(index=myindex, body=record)
             counter += 1
       except Metar.ParserError as exc:
         # store execptions for further investigation
         if exc:
           missed += 1
-print ("%s records added, %s records where duplicates, %s records had errors, %s missed info moments") % (counter,skipped,missed,noinfo)
+print (("%s records added, %s records where duplicates, %s records had errors, %s missed info moments") % (counter,skipped,missed,noinfo))

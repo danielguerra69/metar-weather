@@ -1,0 +1,35 @@
+version: '2'
+services:
+
+  elassandra-seed:
+    container_name: elassandra-seed-node
+    image: strapdata/elassandra:6.8.4
+    volumes:
+      - esdata:/var/lib/cassandra
+      - eslogs:/var/log/cassandra
+
+  elassandra-kibana:
+    container_name: kibana-elassandra
+    image: qxip/kibana-elassandra:master
+    ports:
+      - "5601:5601"
+    environment:
+      - "ELASTICSEARCH_URL=http://elassandra-seed:9200"
+      - "XPACK_MONITORING_ENABLED=false"
+
+  metar-weather:
+    image: danielguerra/metar-weather
+    environment:
+      - "ES_URL=elasticsearch:9200"
+    volumes:
+      - metardata:/metar
+    links:
+     - "elassandra-seed:elasticsearch"
+
+volumes:
+  esdata:
+    driver: local
+  eslogs:
+    driver: local
+  metardata:
+    driver: local

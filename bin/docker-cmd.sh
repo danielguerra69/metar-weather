@@ -17,10 +17,6 @@ while [ 1 ]; do
   # do all the data
   echo $(date)" Processing new data"
   for x  in `ls cycles/*.TXT`; do echo -n $(date)" "$x" " ; cat $x | grep -E "^[A-Z]{4} " | sort -u | metar2elastic.py ; done
-  # remove cycles
-  echo $(date)" Removing new data"
-  # rm -rf cycles
-  # wait
   echo $(date)" Sleeping 120 seconds"
   sleep 120
 done

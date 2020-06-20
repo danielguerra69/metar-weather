@@ -14,8 +14,12 @@ http://<docker-host>:5601
 
 
 Kibana config (add index paterns)
-Index name or pattern: metar-*
+Index name or pattern: metar
 Time-field name: time
+
+![Wind map example](https://github.com/danielguerra69/metar-weather/blob/master/images/wind.png)
+
+![Temperature map example](https://github.com/danielguerra69/metar-weather/blob/master/images/temperature.png)
 
 #### Automatic docker-compose method
 

@@ -2,30 +2,37 @@ version: '2'
 services:
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.8.0
     container_name: elasticsearch
     environment:
-      - cluster.name=weather-cluster
-      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+      - node.name=elasticsearch
+      - cluster.name=es-cluster
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - discovery.seed_hosts=elasticsearch, elasticsearch2
+      - cluster.initial_master_nodes=elasticsearch, elasticsearch2
     volumes:
       - esdata1:/usr/share/elasticsearch/data
 
   elasticsearch2:
-    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.8.0
     container_name: elasticsearch2
     environment:
-      - cluster.name=weather-cluster
-      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
-      - "discovery.zen.ping.unicast.hosts=elasticsearch"
+      - node.name=elasticsearch2
+      - cluster.name=es-cluster
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - discovery.seed_hosts=elasticsearch
+      - cluster.initial_master_nodes=elasticsearch, elasticsearch2
+    depends_on:
+      - elasticsearch
     volumes:
       - esdata2:/usr/share/elasticsearch/data
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:6.4.0
+    image: docker.elastic.co/kibana/kibana:7.8.0
     ports:
      - "5601:5601"
     links:
-     - "elasticsearch2:elasticsearch"
+     - "elasticsearch"
 
   metar-weather:
     build: ./
@@ -34,7 +41,7 @@ services:
     volumes:
       - metardata:/metar
     links:
-     - "elasticsearch:elasticsearch"
+     - "elasticsearch"
 
 volumes:
   esdata1:
