@@ -20,11 +20,13 @@ services:
   metar-weather:
     image: danielguerra/metar-weather
     environment:
-      - "ES_URL=elasticsearch:9200"
+      - "ES_URL=http://elassandra-seed:9200"
     volumes:
       - metardata:/metar
-    links:
-     - "elassandra-seed:elasticsearch"
+    depends_on:
+      - elassandra-seed
+    networks:
+      - default
 
 volumes:
   esdata:
