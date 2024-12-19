@@ -13,7 +13,7 @@ done
 
 >&2 echo "$(date) Elasticsearch is up - executing command"
 curl -XPUT $ES_URL/_template/metar-mapping-template -H 'Content-Type: application/json' -d '{
-    "index_patterns": ["metar"],
+    "index_patterns": ["metar-*"],
     "mappings" : {
         "properties" : {
           "country" : {

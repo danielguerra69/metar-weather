@@ -2,12 +2,9 @@
 
 echo "$(date) Starting METAR Weather"
 # set elasticsearch mappings
-mapping.sh
+/venv/bin/mapping.sh
 # go to the metar dir
 cd /metar
-
-# add station information
-#wget -O - https://www.aviationweather.gov/docs/metar/stations.txt > stations.txt
 
 #keep looping for ever
 while [ 1 ]; do
@@ -16,7 +13,7 @@ while [ 1 ]; do
   lftp -c mirror https://tgftp.nws.noaa.gov/data/observations/metar/cycles/
   # do all the data
   echo $(date)" Processing new data"
-  for x  in `ls cycles/*.TXT`; do echo -n $(date)" "$x" " ; cat $x | grep -E "^[A-Z]{4} " | sort -u | metar2elastic.py ; done
+  for x  in `ls cycles/*.TXT`; do echo -n $(date)" "$x" " ; cat $x | grep -E "^[A-Z]{4} " | sort -u | /venv/bin/metar2elastic.py ; done
   echo $(date)" Sleeping 120 seconds"
   sleep 120
 done
